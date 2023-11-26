@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Components/TimelineComponent.h"
-#include "Components/TimelineComponent.h"
 #include "JCharacter.generated.h"
 
 class UCameraComponent;
@@ -50,6 +49,8 @@ public:
 		bool bIsJump = false;
 	//当在Jump动画时，更改，然后延时动画时长之后修改回来
 	void ResetbIsJump();
+	//重新恢复输入
+	void ResetInput();
 
 protected:
 	// Called when the game starts or when spawned
@@ -74,11 +75,11 @@ protected:
 	void MoveRight(float value);
 	
 	//定义速度切换
-	void WalkControl();
+	//void WalkControl();
 	void RunControl();
 	void JogControl();
 
-	//重写Jump,以实现播放蒙太奇
+	////重写Jump,以实现播放蒙太奇
 	virtual void Jump() override;
 	//播放完成之后才能继续跳跃
 	bool bInJump = false;

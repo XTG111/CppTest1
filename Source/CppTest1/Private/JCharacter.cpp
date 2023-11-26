@@ -42,6 +42,12 @@ void AJCharacter::ResetbIsJump()
 	GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
 }
 
+void AJCharacter::ResetInput()
+{
+	EnableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
+}
+
 // Called when the game starts or when spawned
 void AJCharacter::BeginPlay()
 {
@@ -54,7 +60,7 @@ void AJCharacter::BeginPlay()
 	CWTimeline->AddInterpFloat(CWFloatCurve, OnCWTimelineTickCallBack);
 
 	//结束
-	OnCWTimelineFinishedCallBack.BindUFunction(this, "CWTimelineFinishedCallBack");
+	OnCWTimelineFinishedCallBack.BindDynamic(this, &AJCharacter::CWTimelineFinishedCallBack);
 	CWTimeline->SetTimelineFinishedFunc(OnCWTimelineFinishedCallBack);
 
 	//CWTimeline->SetTimelineLength(1.0f);
@@ -62,6 +68,10 @@ void AJCharacter::BeginPlay()
 
 	//CWTimeline->SetLooping(false);
 	CWTimeline->RegisterComponent();
+
+	//设置出现动画不能操作
+	DisableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetInput, 5.0f);
 }
 
 //左右前后移动
@@ -89,13 +99,13 @@ void AJCharacter::MoveRight(float value)
 	AddMovementInput(RightVector, value);
 }
 
-void AJCharacter::WalkControl()
-{
-	GetCharacterMovement()->MaxWalkSpeed = 120.0f;
-	GetCharacterMovement()->JumpZVelocity = 200.0f;
-	
-}
-
+//void AJCharacter::WalkControl()
+//{
+//	GetCharacterMovement()->MaxWalkSpeed = 120.0f;
+//	GetCharacterMovement()->JumpZVelocity = 200.0f;
+//	
+//}
+//
 void AJCharacter::RunControl()
 {
 	GetCharacterMovement()->MaxWalkSpeed = 660.0f;
@@ -114,22 +124,22 @@ void AJCharacter::JogControl()
 void AJCharacter::Jump()
 {
 	Super::Jump();
-	bIsJump = true;
-	float Velocity = GetCharacterMovement()->MaxWalkSpeed;
-	if (!bInJump) {
-		bInJump = true;
-		if (Velocity == 120.0f) {
-			PlayAnimMontage(WalkJump, 1.f);
-		}
-		else if (Velocity == 420.0f) {
-			PlayAnimMontage(JogJump, 1.f);
-		}
-		else if (Velocity == 660.0f) {
-			PlayAnimMontage(RunJump);
-		}
-	}
-	//延时执行
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetbIsJump, 1.0f, true);
+	//bIsJump = true;
+	//float Velocity = GetCharacterMovement()->MaxWalkSpeed;
+//	if (!bInJump) {
+//		bInJump = true;
+//		if (Velocity == 120.0f) {
+//			PlayAnimMontage(WalkJump, 1.f);
+//		}
+//		else if (Velocity == 420.0f) {
+//			PlayAnimMontage(JogJump, 1.f);
+//		}
+//		else if (Velocity == 660.0f) {
+//			PlayAnimMontage(RunJump);
+//		}
+//	}
+//	//延时执行
+//	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetbIsJump, 1.0f, true);
 }
 
 void AJCharacter::JCrouch()
@@ -163,9 +173,9 @@ void AJCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	//绑定行为
-	PlayerInputComponent->BindAction("WalkControl", IE_Pressed, this, &AJCharacter::WalkControl);
+	//PlayerInputComponent->BindAction("WalkControl", IE_Pressed, this, &AJCharacter::WalkControl);
 	PlayerInputComponent->BindAction("RunControl", IE_Pressed, this, &AJCharacter::RunControl);
-	PlayerInputComponent->BindAction("WalkControl", IE_Released, this, &AJCharacter::JogControl);
+	//PlayerInputComponent->BindAction("WalkControl", IE_Released, this, &AJCharacter::JogControl);
 	PlayerInputComponent->BindAction("RunControl", IE_Released, this, &AJCharacter::JogControl);
 	PlayerInputComponent->BindAction("JumpControl", IE_Pressed, this, &AJCharacter::Jump);
 	PlayerInputComponent->BindAction("CrouchControl", IE_Pressed, this, &AJCharacter::JCrouch);
