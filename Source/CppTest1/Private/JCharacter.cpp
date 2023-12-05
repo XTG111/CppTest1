@@ -22,17 +22,17 @@ AJCharacter::AJCharacter()
 	CameraComp->SetupAttachment(SpringArmComp);
 }
 
-//时间轴函数绑定
-void AJCharacter::CWTimelineTickCallBack(float value)
-{
-	SpringArmComp->SocketOffset.X = 0.0f;
-	SpringArmComp->SocketOffset.Y = SpringArmComp->SocketOffset.Y;
-	SpringArmComp->SocketOffset.Z = FMath::Lerp(0.0f, -40.0f,value);
-}
-
-void AJCharacter::CWTimelineFinishedCallBack()
-{
-}
+////时间轴函数绑定
+//void AJCharacter::CWTimelineTickCallBack(float value)
+//{
+//	SpringArmComp->SocketOffset.X = 0.0f;
+//	SpringArmComp->SocketOffset.Y = SpringArmComp->SocketOffset.Y;
+//	SpringArmComp->SocketOffset.Z = FMath::Lerp(0.0f, -40.0f,value);
+//}
+//
+//void AJCharacter::CWTimelineFinishedCallBack()
+//{
+//}
 
 //Delay函数绑定
 void AJCharacter::ResetbIsJump()
@@ -53,25 +53,25 @@ void AJCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CWTimeline = NewObject<UTimelineComponent>(this,"CrouchTimeLine");
-	//调用时间轴
-	OnCWTimelineTickCallBack.BindDynamic(this, &AJCharacter::CWTimelineTickCallBack);
-	//OnCWTimelineTickCallBack.BindUFunction(this, "CWTimelineTickCallBack");
-	CWTimeline->AddInterpFloat(CWFloatCurve, OnCWTimelineTickCallBack);
+	//CWTimeline = NewObject<UTimelineComponent>(this,"CrouchTimeLine");
+	////调用时间轴
+	//OnCWTimelineTickCallBack.BindDynamic(this, &AJCharacter::CWTimelineTickCallBack);
+	////OnCWTimelineTickCallBack.BindUFunction(this, "CWTimelineTickCallBack");
+	//CWTimeline->AddInterpFloat(CWFloatCurve, OnCWTimelineTickCallBack);
 
-	//结束
-	OnCWTimelineFinishedCallBack.BindDynamic(this, &AJCharacter::CWTimelineFinishedCallBack);
-	CWTimeline->SetTimelineFinishedFunc(OnCWTimelineFinishedCallBack);
+	////结束
+	//OnCWTimelineFinishedCallBack.BindDynamic(this, &AJCharacter::CWTimelineFinishedCallBack);
+	//CWTimeline->SetTimelineFinishedFunc(OnCWTimelineFinishedCallBack);
 
-	//CWTimeline->SetTimelineLength(1.0f);
-	//CWTimeline->SetTimelineLengthMode(ETimelineLengthMode::TL_LastKeyFrame);
+	////CWTimeline->SetTimelineLength(1.0f);
+	////CWTimeline->SetTimelineLengthMode(ETimelineLengthMode::TL_LastKeyFrame);
 
-	//CWTimeline->SetLooping(false);
-	CWTimeline->RegisterComponent();
+	////CWTimeline->SetLooping(false);
+	//CWTimeline->RegisterComponent();
 
-	//设置出现动画不能操作
-	DisableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetInput, 5.0f);
+	////设置出现动画不能操作
+	//DisableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	//GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetInput, 0.5f);
 }
 
 //左右前后移动
@@ -80,7 +80,7 @@ void AJCharacter::MoveForward(float value)
 	FRotator ControlRota = GetControlRotation();
 	ControlRota.Pitch = 0.0f;
 	ControlRota.Roll = 0.0f;
-
+	ForwardInput = value;
 	//对应蓝图中的make Rotator + GetForwardVector
 	FVector ForwardVector = FRotationMatrix(ControlRota).GetScaledAxis(EAxis::X);
 
@@ -92,7 +92,7 @@ void AJCharacter::MoveRight(float value)
 	FRotator ControlRota = GetControlRotation();
 	ControlRota.Pitch = 0.0f;
 	ControlRota.Roll = 0.0f;
-
+	RightInput = value;
 	//对应蓝图中的make Rotator + GetRightVector
 	FVector RightVector = FRotationMatrix(ControlRota).GetScaledAxis(EAxis::Y);
 
@@ -108,22 +108,33 @@ void AJCharacter::MoveRight(float value)
 //
 void AJCharacter::RunControl()
 {
-	GetCharacterMovement()->MaxWalkSpeed = 660.0f;
+	GetCharacterMovement()->MaxWalkSpeed = 420.0f;
 	GetCharacterMovement()->JumpZVelocity = 400.0f;
+	InRun = true;
 	
 
 }
 
 void AJCharacter::JogControl()
 {
-	GetCharacterMovement()->MaxWalkSpeed = 420.0f;
+	GetCharacterMovement()->MaxWalkSpeed = 170.0f;
 	GetCharacterMovement()->JumpZVelocity = 300.0f;
+	InRun = false;
 	
 }
 
-void AJCharacter::Jump()
+void AJCharacter::ReJump()
+{
+	Super::StopJumping();
+
+	InJump = false;
+}
+
+void AJCharacter::PrJump()
 {
 	Super::Jump();
+	InJump = true;
+
 	//bIsJump = true;
 	//float Velocity = GetCharacterMovement()->MaxWalkSpeed;
 //	if (!bInJump) {
@@ -142,28 +153,46 @@ void AJCharacter::Jump()
 //	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetbIsJump, 1.0f, true);
 }
 
-void AJCharacter::JCrouch()
+void AJCharacter::PreJCrouch()
 {
 	if (!GetCharacterMovement()->IsCrouching()) {
 		Crouch();
 		bIsCrouch = true;
-		GetCharacterMovement()->MaxWalkSpeedCrouched = 135.0f;
-		CWTimeline->Play();
+		GetCharacterMovement()->MaxWalkSpeedCrouched = 75.0f;
+		//CWTimeline->Play();
 	}
 	else {
 		UnCrouch();
 		bIsCrouch = false;
-		GetCharacterMovement()->MaxWalkSpeed = 420.0f;
-		CWTimeline->Reverse();
+		GetCharacterMovement()->MaxWalkSpeed =170.0f;
+		//CWTimeline->Reverse();
 	}
-	
+}
+
+void AJCharacter::SetWeapon()
+{
+	if (!bSetWeapon) {
+		bSetWeapon = true;
+		bUseControllerRotationYaw = true;
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+		SpringArmComp->SocketOffset.X = 300.0f;
+		SpringArmComp->SocketOffset.Z = 100.0f;
+	}
+
+	else {
+		bSetWeapon = false;
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		SpringArmComp->SocketOffset.X = 0.0f;
+		SpringArmComp->SocketOffset.Z = 0.0f;
+	}
 }
 
 // Called every frame
 void AJCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	CWTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, NULL);
+	//CWTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, NULL);
 
 }
 
@@ -177,8 +206,10 @@ void AJCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAction("RunControl", IE_Pressed, this, &AJCharacter::RunControl);
 	//PlayerInputComponent->BindAction("WalkControl", IE_Released, this, &AJCharacter::JogControl);
 	PlayerInputComponent->BindAction("RunControl", IE_Released, this, &AJCharacter::JogControl);
-	PlayerInputComponent->BindAction("JumpControl", IE_Pressed, this, &AJCharacter::Jump);
-	PlayerInputComponent->BindAction("CrouchControl", IE_Pressed, this, &AJCharacter::JCrouch);
+	PlayerInputComponent->BindAction("JumpControl", IE_Pressed, this, &AJCharacter::PrJump);
+	PlayerInputComponent->BindAction("JumpControl", IE_Released, this, &AJCharacter::ReJump);
+	PlayerInputComponent->BindAction("CrouchControl", IE_Pressed, this, &AJCharacter::PreJCrouch);
+	PlayerInputComponent->BindAction("SetWeapon", IE_Pressed, this, &AJCharacter::SetWeapon);
 
 	//绑定键盘映射
 	//Yaw对应Z轴，Pitch对应Y轴，Roll对应X轴
