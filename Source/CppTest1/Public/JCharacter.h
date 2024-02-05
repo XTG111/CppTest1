@@ -27,11 +27,11 @@ public:
 
 	//跳跃状态
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		bool InJump = false;
+		bool bCanJump = false;
 
 	//奔跑状态
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		bool InRun = false;
+		bool bInRun = false;
 
 	//判断是否在下蹲
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -48,10 +48,6 @@ public:
 	////定义一个时间轴，实现下蹲和起立的相机视角切换
 	//UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
 	//	UTimelineComponent*  CWTimeline;
-
-	////定义一个采样曲线
-	//UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-	//	 UCurveFloat* CWFloatCurve;
 
 	////定义曲线更新事件
 	//FOnTimelineFloat OnCWTimelineTickCallBack;
@@ -71,6 +67,11 @@ public:
 	void ResetbIsJump();
 	//重新恢复输入
 	void ResetInput();
+
+	//蹲下检测
+	UFUNCTION()
+		bool CheckCouldCrouch2Stand();
+
 
 protected:
 	// Called when the game starts or when spawned
@@ -118,5 +119,22 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+private:
+	//动画通知调用
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+		void SetMoveStartDirection();
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+		void SetStartUpFoot();
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+		void SetLoopUpFoot();
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+		void SetJumpState();
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+		void JumpStartToLand();
+	//是否到地的定时器控制
+	FTimerHandle LandTime;
+	float LandDelayTime = 0.2f;
+	void LandTimeFinished();
 
 };

@@ -7,6 +7,7 @@
 #include <Kismet/GameplayStatics.h>
 #include "Kismet/KismetMathLibrary.h"
 #include "JCharacter.h"
+#include "WhiteManAnimInstance.h"
 
 // Sets default values
 AJCharacter::AJCharacter()
@@ -20,19 +21,10 @@ AJCharacter::AJCharacter()
 	SpringArmComp->bUsePawnControlRotation = true;
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
+	GetCharacterMovement()->MaxWalkSpeedCrouched = 100.f;
+	GetCharacterMovement()->MaxWalkSpeed = 200.0f;
+	GetCharacterMovement()->JumpZVelocity = 300.0f;
 }
-
-////时间轴函数绑定
-//void AJCharacter::CWTimelineTickCallBack(float value)
-//{
-//	SpringArmComp->SocketOffset.X = 0.0f;
-//	SpringArmComp->SocketOffset.Y = SpringArmComp->SocketOffset.Y;
-//	SpringArmComp->SocketOffset.Z = FMath::Lerp(0.0f, -40.0f,value);
-//}
-//
-//void AJCharacter::CWTimelineFinishedCallBack()
-//{
-//}
 
 //Delay函数绑定
 void AJCharacter::ResetbIsJump()
@@ -48,30 +40,40 @@ void AJCharacter::ResetInput()
 	GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
 }
 
+//当在障碍物下按下蹲时无法站立
+bool AJCharacter::CheckCouldCrouch2Stand()
+{
+	//设置检测点
+	FVector HeadLoc = UKismetMathLibrary::MakeVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + 300.f);
+	//检测碰撞
+	FHitResult Hit;
+	//设置检测哪些物体
+	FCollisionQueryParams Params;
+	//不要检测自己
+	Params.AddIgnoredActor(this);
+	//配置碰撞检测条件
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_PhysicsBody);
+	bool IsCheck = GetWorld()->LineTraceSingleByChannel(Hit, GetActorLocation(), HeadLoc, ECC_Visibility, Params);
+	return IsCheck;
+}
+
 // Called when the game starts or when spawned
 void AJCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	//CWTimeline = NewObject<UTimelineComponent>(this,"CrouchTimeLine");
-	////调用时间轴
-	//OnCWTimelineTickCallBack.BindDynamic(this, &AJCharacter::CWTimelineTickCallBack);
-	////OnCWTimelineTickCallBack.BindUFunction(this, "CWTimelineTickCallBack");
-	//CWTimeline->AddInterpFloat(CWFloatCurve, OnCWTimelineTickCallBack);
-
-	////结束
-	//OnCWTimelineFinishedCallBack.BindDynamic(this, &AJCharacter::CWTimelineFinishedCallBack);
-	//CWTimeline->SetTimelineFinishedFunc(OnCWTimelineFinishedCallBack);
-
-	////CWTimeline->SetTimelineLength(1.0f);
-	////CWTimeline->SetTimelineLengthMode(ETimelineLengthMode::TL_LastKeyFrame);
-
-	////CWTimeline->SetLooping(false);
-	//CWTimeline->RegisterComponent();
-
-	////设置出现动画不能操作
-	//DisableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-	//GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetInput, 0.5f);
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+		if (AnimIns)
+		{
+			AnimIns->StopFlag = 0.f;
+		}
+	}
 }
 
 //左右前后移动
@@ -99,73 +101,63 @@ void AJCharacter::MoveRight(float value)
 	AddMovementInput(RightVector, value);
 }
 
-//void AJCharacter::WalkControl()
-//{
-//	GetCharacterMovement()->MaxWalkSpeed = 120.0f;
-//	GetCharacterMovement()->JumpZVelocity = 200.0f;
-//	
-//}
-//
 void AJCharacter::RunControl()
 {
-	GetCharacterMovement()->MaxWalkSpeed = 420.0f;
+	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
 	GetCharacterMovement()->JumpZVelocity = 400.0f;
-	InRun = true;
-	
-
+	bInRun = true;
 }
 
 void AJCharacter::JogControl()
 {
-	GetCharacterMovement()->MaxWalkSpeed = 170.0f;
+	GetCharacterMovement()->MaxWalkSpeed = 200.0f;
 	GetCharacterMovement()->JumpZVelocity = 300.0f;
-	InRun = false;
-	
+	bInRun = false;
 }
 
 void AJCharacter::ReJump()
 {
 	Super::StopJumping();
 
-	InJump = false;
+	bCanJump = false;
 }
 
 void AJCharacter::PrJump()
 {
 	Super::Jump();
-	InJump = true;
-
-	//bIsJump = true;
-	//float Velocity = GetCharacterMovement()->MaxWalkSpeed;
-//	if (!bInJump) {
-//		bInJump = true;
-//		if (Velocity == 120.0f) {
-//			PlayAnimMontage(WalkJump, 1.f);
-//		}
-//		else if (Velocity == 420.0f) {
-//			PlayAnimMontage(JogJump, 1.f);
-//		}
-//		else if (Velocity == 660.0f) {
-//			PlayAnimMontage(RunJump);
-//		}
-//	}
-//	//延时执行
-//	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AJCharacter::ResetbIsJump, 1.0f, true);
+	bCanJump = true;
 }
 
 void AJCharacter::PreJCrouch()
 {
-	if (!GetCharacterMovement()->IsCrouching()) {
-		Crouch();
-		bIsCrouch = true;
-		GetCharacterMovement()->MaxWalkSpeedCrouched = 75.0f;
-		//CWTimeline->Play();
-	}
-	else {
+	bool check = CheckCouldCrouch2Stand();
+	if (GetCharacterMovement()->IsCrouching() && !check) 
+	{
 		UnCrouch();
 		bIsCrouch = false;
-		GetCharacterMovement()->MaxWalkSpeed =170.0f;
-		//CWTimeline->Reverse();
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+			if (AnimIns)
+			{
+				AnimIns->StopFlag = 0.f;
+			}
+		}
+	}
+	else
+	{
+		Crouch();
+		bIsCrouch = true;
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+			if (AnimIns)
+			{
+				AnimIns->StopFlag = 1.f;
+			}
+		}
 	}
 }
 
@@ -175,16 +167,12 @@ void AJCharacter::SetWeapon()
 		bSetWeapon = true;
 		bUseControllerRotationYaw = true;
 		GetCharacterMovement()->bOrientRotationToMovement = false;
-		SpringArmComp->SocketOffset.X = 300.0f;
-		SpringArmComp->SocketOffset.Z = 100.0f;
 	}
 
 	else {
 		bSetWeapon = false;
 		bUseControllerRotationYaw = false;
 		GetCharacterMovement()->bOrientRotationToMovement = true;
-		SpringArmComp->SocketOffset.X = 0.0f;
-		SpringArmComp->SocketOffset.Z = 0.0f;
 	}
 }
 
@@ -192,7 +180,6 @@ void AJCharacter::SetWeapon()
 void AJCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	//CWTimeline->TickComponent(DeltaTime, ELevelTick::LEVELTICK_TimeOnly, NULL);
 
 }
 
@@ -218,6 +205,100 @@ void AJCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAxis("LookUp",this,&APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
 
+}
+
+void AJCharacter::SetMoveStartDirection()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+		if (AnimIns)
+		{
+			AnimIns->MoveStartDirection = AnimIns->MoveLoopDirection;
+		}
+	}
+}
+
+void AJCharacter::SetStartUpFoot()
+{
+
+}
+
+void AJCharacter::SetLoopUpFoot()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+		if (AnimIns)
+		{
+			float NowFoot = AnimIns->GetCurveValue(FName("UpFoot"));
+			if (NowFoot > 0.f)
+			{
+				AnimIns->UpFoot = 1.f;
+			}
+			else
+			{
+				AnimIns->UpFoot = -1.f;
+			}
+		}
+	}
+}
+
+void AJCharacter::SetJumpState()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+		if (AnimIns)
+		{
+			if (!AnimIns->bCanMove)
+			{
+				AnimIns->JumpState = 1.f;
+			}
+			else
+			{
+				if (AnimIns->bIsCrouch)
+				{
+					AnimIns->JumpState = 1.f;
+				}
+				else
+				{
+					AnimIns->JumpState = AnimIns->CurrentMoveState;
+				}
+			}
+		}
+	}
+}
+
+void AJCharacter::JumpStartToLand()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+		if (AnimIns)
+		{
+			AnimIns->bLand = true;
+		}
+	}
+	GetWorldTimerManager().SetTimer(LandTime, this, &AJCharacter::LandTimeFinished, LandDelayTime);
+}
+
+void AJCharacter::LandTimeFinished()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		UWhiteManAnimInstance* AnimIns = Cast<UWhiteManAnimInstance>(AnimInstance);
+		if (AnimIns)
+		{
+			AnimIns->bLand = false;
+		}
+	}
+	GetWorldTimerManager().ClearTimer(LandTime);
 }
 
 
